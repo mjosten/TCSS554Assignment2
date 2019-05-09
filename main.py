@@ -25,22 +25,29 @@ Original Rank Vector
 Converged Rank Vector for Matrix M and A.
 Iterations to get a converged rank vector with Matrix M and A.
 """
-
+import sys
 
 BETA = 0.85
-EPSILON = 0.0001
+EPSILON = 0.000001
 
 #Main function for the PageRank program.
 def main():
+
+    #Command line argument for file path
+    arg = 'test1.txt'
+    if len(sys.argv) >= 2:
+        arg = sys.argv[1]
+    fInput = open(arg, 'r')
+
     #adjacency matrix
-    adjMat = getAdjacencyMatrix() 
+    adjMat = getAdjacencyMatrix(fInput) 
     #Matrix M
     M = createMatrixM(adjMat)
-    #Matrix A
+    # #Matrix A
     A = createMatrixA(M)
-    #Original Rank Vector
+    # #Original Rank Vector
     R0 = createBaseRankVector(len(M))
-    # Converge the rank vectors
+    # # Converge the rank vectors
     convergedRankM, iterationsM = convergeRankVector(M, R0)
     convergedRankA, iterationsA = convergeRankVector(A, R0)
 
@@ -71,7 +78,7 @@ def convergeRankVector(M, R):
     if (vectorDifference(R, newR) > 0):
         iterations = 1
 
-    while (vectorDifference(newR, R) >= EPSILON):
+    while (vectorDifference(newR, R) > EPSILON):
         R = newR
         newR = iterateRankVector(M, R)
         iterations += 1
@@ -138,19 +145,61 @@ def generateLinks(adjMat):
     return result
 
 # Function that will read graph.txt and return an adjacency matrix.
-def getAdjacencyMatrix():
-    fGraph = open("graph.txt", "r")
+# 1. create a dictionary of {node# : [list of nodes pointed to by node]}
+# 2. create a dictionary of {node# : # of outlinks of node}
+# 3. using this information create the adjacency matrix.
+def getAdjacencyMatrix(fGraph):
+
     input = []
     for line in fGraph:
         input.append(line.split())
     
-    result = []
-    for i in input:
-        intLine = []
-        for j in i:
-            intLine.append(int(j))
-        result.append(intLine)
-    return result
+    nodesDict = createNodeDicts(input)
+    maxDictAmount = getMaxAmount(nodesDict)
+    
+    # Initialize the adjacency matrix
+    adjMatrix = []
+    for _ in range(maxDictAmount):
+        tmpList = []
+        for _ in range(maxDictAmount):
+            tmpList.append(0)
+        adjMatrix.append(tmpList)
+
+    # populate the adjacency matrix with node link information
+    for node, outNodes in nodesDict.items():
+        for el in outNodes:
+            if (node-1 >= 0 and el-1 >= 0):
+                adjMatrix[el-1][node-1] = 1
+
+
+    return adjMatrix
+
+# Helper function that will create dictionaries of node out nodes and node # of outlinks per node
+# input is the input matrix file put into a 2D list
+def createNodeDicts(input):
+    nodeOutNodesDict = {}
+    for el in input:
+        node = int(el[0])
+        outNode = int(el[1])
+
+        if node not in nodeOutNodesDict:
+            nodeOutNodesDict[node] = [outNode]
+        else:
+            if outNode not in nodeOutNodesDict[node]:
+                nodeOutNodesDict[node].append(outNode)
+
+    return nodeOutNodesDict
+
+# Helper function that will get the max value out of all the keys and values
+def getMaxAmount(dct):
+    maxValue = 0
+    for k, v in dct.items():
+        maxValue = max(maxValue, k)
+        for el in v:
+            maxValue = max(maxValue, el)
+    
+    return maxValue
+
 
 # Helper function that will create a distribution matrix where
 # each cell contains 1/n where 1/n is the total number of cells in a column.
@@ -181,7 +230,8 @@ def printMat(M):
     for i in range(len(M)):
         print("[", end='')
         for j in range(len(M[i])):
-            print("{:.4f}".format(round(M[i][j], 4)), end='')
+            print("{:.5f}".format(round(M[i][j], 5)), end='')
+            #print("{:.8f}".format(round(M[i][j], 8)), end='')
             if j != len(M[i])-1:
                 print(", ", end="")
 
@@ -192,11 +242,16 @@ def printMat(M):
 def printVect(V):
     print('[', end='')
     for i in range(len(V)):
-        print("{:.4f}".format(round(V[i], 4)), end='')
+        print("{:.5}".format(round(V[i], 5)), end='')
+        #print("{:.8f}".format(round(V[i], 8)), end='')
         if i != len(V) - 1:
             print(", ", end='')
     print(']')
     return
+
+def printDict(dct):
+    for k, v in dct.items():
+        print("{} : {}".format(k, v))
 
 # Helper function that performs a deep copy of a 2d matrix
 def __copyMat__(M):
